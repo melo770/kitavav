@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Master Quest - Melonee's Classroom</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Comic Sans MS', cursive, sans-serif; background-color: #f0f9ff; overflow-x: hidden; }
+        .hidden { display: none; }
+        .progress-bar { transition: width 0.5s ease-in-out; }
+        .btn-game { transform: translateY(0); transition: all 0.1s; border-bottom-width: 4px; }
+        .btn-game:active { transform: translateY(2px); border-bottom-width: 2px; }
+        
+        @keyframes firework {
+            0% { transform: translate(-50%, 60vh); width: 4px; opacity: 1; }
+            50% { width: 4px; opacity: 1; }
+            100% { transform: translate(-50%, 10vh); width: 500px; opacity: 0; }
+        }
+        .firework {
+            position: absolute; left: 50%; bottom: 0;
+            width: 6px; height: 6px; background: radial-gradient(circle, #ff0, #f0f, #0ff, #fff);
+            border-radius: 50%; pointer-events: none;
+        }
+        .animate-firework { animation: firework 0.8s ease-out forwards; }
+
+        @keyframes scorePop {
+            0% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(2); filter: brightness(1.5); color: #fbbf24; text-shadow: 0 0 30px rgba(251,191,36,1); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+        .score-animate { animation: scorePop 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        .drop-zone { min-height: 100px; transition: all 0.2s; border: 4px dashed #cbd5e1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .drop-zone.active { border-color: #3b82f6; background-color: #eff6ff; transform: scale(1.02); }
+        .draggable { cursor: grab; user-select: none; touch-action: none; }
+        .draggable:active { cursor: grabbing; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .animate-shake { animation: shake 0.4s ease-in-out; }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <!-- Classroom Header Updated with Hebrew Text -->
+    <div class="fixed top-4 left-4 bg-white px-5 py-3 rounded-2xl shadow-md border-2 border-blue-400 z-50 text-left">
+        <div class="font-bold text-blue-600 text-lg">🏫 Melonee's Classroom</div>
+        <div class="text-sm font-semibold text-gray-700 mt-1 leading-tight" dir="rtl">
+            הכיתה של מיכל והרב שי <br>
+            בית ספר מעלה
+        </div>
+    </div>
+
+    <div id="score-container" class="fixed top-4 right-4 bg-yellow-400 px-6 py-2 rounded-full shadow-md border-2 border-yellow-600 font-black text-white text-2xl z-50">
+        ⭐ <span id="score-val">0</span>
+    </div>
+
+    <div id="game-container" class="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden border-8 border-blue-400">
+        <div class="bg-gray-200 h-4 w-full">
+            <div id="progress" class="progress-bar bg-green-400 h-full w-0"></div>
+        </div>
+
+        <div id="screen-content" class="p-6 text-center min-h-[550px] flex flex-col justify-center items-center"></div>
+
+        <div id="feedback" class="hidden absolute inset-0 flex items-center justify-center bg-white bg-opacity-95 z-20 p-6 text-center">
+            <div id="fireworks-anchor" class="absolute inset-0 pointer-events-none"></div>
+            <div class="relative z-30">
+                <div id="feedback-emoji" class="text-9xl mb-4"></div>
+                <div id="feedback-text" class="text-5xl font-black mb-8"></div>
+                <button id="next-btn" onclick="nextStep()" class="bg-blue-500 text-white px-12 py-5 rounded-full text-3xl shadow-lg hover:bg-blue-600 transition font-bold uppercase tracking-wider">NEXT ➡️</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let currentStep = 0;
+        let matchedCount = 0;
+
+        const level1 = [
+            { type: 'choice', image: '🗺️', text: 'Look at the map.', options: ['Map', 'Pan', 'Bag'], correct: 'Map' },
+            { type: 'choice', image: '🍳', text: 'What is this?', options: ['Sit', 'Pan', 'Box'], correct: 'Pan' },
+            { type: 'choice', image: '➕', text: '5 + 2 = 7.', options: ['Sad', 'Add', 'Gold'], correct: 'Add' },
+            { type: 'choice', image: '🐍', text: 'The snake is smiling.', options: ['Happy', 'Sad'], correct: 'Happy' },
+            { type: 'choice', image: '🚁', text: 'Helicopter starts with...', options: ['H', 'S', 'B'], correct: 'H' },
+            { type: 'choice', image: '🍿', text: 'Popcorn is in the pan.', options: ['In', 'On'], correct: 'In' },
+            { type: 'choice', image: '🎒', text: 'Bag starts with...', options: ['A', 'T', 'B'], correct: 'B' },
+            { type: 'choice', image: '🏠', text: 'House starts with...', options: ['H', 'C', 'D'], correct: 'H' },
+            { type: 'choice', image: '💇', text: 'Look at the hair.', options: ['Hand', 'Hair', 'Hat'], correct: 'Hair' },
+            { type: 'choice', image: '✋', text: 'Is this a hand?', options: ['Yes', 'No'], correct: 'Yes' },
+            { type: 'choice', image: '🍔', text: 'Hamburger starts with...', options: ['H', 'M', 'T'], correct: 'H' },
+            { type: 'choice', image: '😢', text: 'How does he feel?', options: ['Happy', 'Sad'], correct: 'Sad' },
+            { type: 'choice', image: '📦', text: 'The bag is ___ the box.', options: ['In', 'On'], correct: 'On' },
+            { type: 'choice', image: '🔟', text: 'What number is this?', options: ['Two', 'Ten', 'Five'], correct: 'Ten' },
+            { type: 'choice', image: '✨', text: 'The box has ___ inside.', options: ['Gold', 'Sand', 'Popcorn'], correct: 'Gold' },
+            { type: 'choice', image: '👟', text: 'Can he jump?', options: ['Yes', 'No'], correct: 'Yes' },
+            { type: 'choice', image: '🪑', text: 'Sit starts with...', options: ['S', 'A', 'M'], correct: 'S' }
+        ];
+
+        const level2 = [
+            { type: 'match', pairs: [{ img: '➕📝', text: 'I can add' }, { img: '👨🗺️', text: 'The man has a map' }, { img: '🍎🐜', text: 'A is for apple and ant' }] },
+            { type: 'match', pairs: [{ img: '🔟🍳', text: 'Ten pans' }, { img: '🍳🍿', text: 'Popcorn in a pan' }, { img: '🪑🧘', text: 'Sit on the mat' }] },
+            { type: 'match', pairs: [{ img: '🎒📦', text: 'A bag on a box' }, { img: '📦✨', text: 'Gold in a box' }, { img: '🐍😊', text: 'A happy snake' }] },
+            { type: 'match', pairs: [{ img: '🚁🏠', text: 'A big helicopter' }, { img: '💇✋', text: 'Hand and Hair' }, { img: '🏠🌳', text: 'A small house' }] },
+            { type: 'match', pairs: [{ img: '🍔😋', text: 'I like hamburgers' }, { img: '😢🌧️', text: 'The man is sad' }, { img: '📦🎒', text: 'A box in a bag' }] }
+        ];
+
+        const level3 = [
+            { type: 'choice', image: '🎒📦', text: 'Is the bag on the box?', options: ['Yes', 'No'], correct: 'Yes' },
+            { type: 'choice', image: '📦🍿', text: 'What is in the box?', options: ['Popcorn', 'Gold', 'Snake'], correct: 'Popcorn' },
+            { type: 'match', pairs: [{ img: '👟💨', text: 'He can jump' }, { img: '🐈🥛', text: 'C is for cat' }, { img: '🐶🦴', text: 'D is for dog' }] },
+            { type: 'choice', image: '🐍😊', text: 'Which is correct?', options: ['A happy snake', 'A sad snake'], correct: 'A happy snake' },
+            { type: 'choice', image: '🚁🌬️', text: 'Which is correct?', options: ['The house is big', 'The helicopter is big'], correct: 'The helicopter is big' },
+            { type: 'match', pairs: [{ img: '💇🎀', text: 'Long hair' }, { img: '✋🧼', text: 'Wash hands' }, { img: '🏠🏡', text: 'A big house' }] },
+            { type: 'choice', image: '🍳🔥', text: 'The popcorn is in the pan.', options: ['Correct', 'Wrong'], correct: 'Correct' },
+            { type: 'choice', image: '📦✨', text: 'What is in the box?', options: ['Gold', 'A map', 'A pan'], correct: 'Gold' },
+            { type: 'choice', image: '🗺️👨', text: 'The man has a map.', options: ['Correct', 'Wrong'], correct: 'Correct' },
+            { type: 'outro', title: 'SUPER MASTER! 👑', text: 'You completed Melonee Classroom Level 3!', color: 'text-orange-600' }
+        ];
+
+        const gameData = [
+            { type: 'intro', title: 'LEVEL 1 🛡️', text: 'Choose the correct word!', color: 'text-blue-600' },
+            ...level1,
+            { type: 'transition', title: 'LEVEL 2 🚀', text: 'Match the sentences!', color: 'text-purple-600' },
+            ...level2,
+            { type: 'transition', title: 'LEVEL 3 🔥', text: 'The Ultimate Challenge!', color: 'text-red-600' },
+            ...level3
+        ];
+
+        function renderScreen() {
+            const screen = gameData[currentStep];
+            const content = document.getElementById('screen-content');
+            content.innerHTML = '';
+            matchedCount = 0;
+
+            if (['intro', 'outro', 'transition'].includes(screen.type)) {
+                content.innerHTML = `
+                    <h1 class="${screen.type === 'transition' ? 'text-8xl animate-bounce' : 'text-6xl'} font-black mb-6 ${screen.color}">${screen.title}</h1>
+                    <p class="text-2xl text-gray-600 mb-10">${screen.text}</p>
+                    <button onclick="nextStep()" class="bg-blue-500 text-white px-14 py-6 rounded-full text-4xl shadow-xl hover:scale-110 transition btn-game border-blue-700 font-black tracking-widest uppercase">
+                        ${screen.type === 'outro' ? 'RESTART' : 'START! 🚀'}
+                    </button>
+                `;
+            } else if (screen.type === 'choice') {
+                content.innerHTML = `
+                    <div class="text-9xl mb-8">${screen.image}</div>
+                    <p class="text-3xl font-black mb-10 text-gray-700 px-4">${screen.text}</p>
+                    <div class="grid grid-cols-1 gap-4 w-full max-w-md">
+                        ${screen.options.map(opt => `
+                            <button onclick="checkAnswer('${opt}')" class="bg-white border-4 border-blue-200 py-5 rounded-3xl text-3xl font-black hover:bg-blue-50 hover:border-blue-400 transition btn-game shadow-md text-gray-800">
+                                ${opt}
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (screen.type === 'match') {
+                const shuffledTexts = [...screen.pairs].sort(() => Math.random() - 0.5);
+                content.innerHTML = `
+                    <h2 class="text-3xl font-black text-purple-600 mb-8 uppercase tracking-tighter">Match the Pictures!</h2>
+                    <div class="grid grid-cols-2 gap-8 w-full max-w-2xl">
+                        <div class="space-y-6">
+                            ${screen.pairs.map((p, i) => `
+                                <div class="bg-blue-50 border-4 border-blue-200 p-4 rounded-3xl text-7xl drop-zone shadow-inner" id="drop-${i}" ondragover="allowDrop(event)" ondrop="handleDrop(event, '${p.text}', 'drop-${i}')">
+                                    ${p.img}
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="space-y-6 flex flex-col justify-center">
+                            ${shuffledTexts.map((p, i) => `
+                                <div class="bg-white border-4 border-purple-300 p-5 rounded-2xl text-xl font-black shadow-lg draggable hover:bg-purple-50 transition" draggable="true" ondragstart="handleDragStart(event, '${p.text}')">
+                                    ${p.text}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <p class="mt-10 text-gray-400 font-black italic uppercase tracking-widest text-sm">Drag text to its picture</p>
+                `;
+            }
+            updateProgress();
+        }
+
+        function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add('active'); }
+        function handleDragStart(ev, text) { ev.dataTransfer.setData("text", text); }
+        function handleDrop(ev, correctText, zoneId) {
+            ev.preventDefault();
+            const zone = document.getElementById(zoneId);
+            zone.classList.remove('active');
+            const draggedText = ev.dataTransfer.getData("text");
+            if (draggedText === correctText) {
+                zone.innerHTML = `<div class="text-4xl">🌟</div><div class="text-sm font-black text-green-600 mt-2 uppercase">${correctText}</div>`;
+                zone.classList.replace('border-blue-200', 'border-green-500');
+                zone.classList.add('bg-green-50');
+                zone.removeAttribute('ondrop');
+                matchedCount++;
+                triggerScorePop(20);
+                if (matchedCount === 3) setTimeout(() => showFeedback(true), 500);
+            } else {
+                zone.classList.add('animate-shake');
+                setTimeout(() => zone.classList.remove('animate-shake'), 400);
+            }
+        }
+
+        function triggerScorePop(points) {
+            const container = document.getElementById('score-container');
+            score += points;
+            document.getElementById('score-val').innerText = score;
+            container.classList.add('score-animate');
+            createFirework();
+            setTimeout(() => container.classList.remove('score-animate'), 700);
+        }
+
+        function createFirework() {
+            const anchor = document.getElementById('fireworks-anchor');
+            for(let i=0; i<3; i++) {
+                const fw = document.createElement('div');
+                fw.className = 'firework animate-firework';
+                fw.style.left = (Math.random() * 80 + 10) + '%';
+                anchor.appendChild(fw);
+                setTimeout(() => fw.remove(), 800);
+            }
+        }
+
+        function checkAnswer(answer) {
+            const current = gameData[currentStep];
+            if (answer === current.correct) {
+                triggerScorePop(10);
+                showFeedback(true);
+            } else {
+                showFeedback(false);
+            }
+        }
+
+        function showFeedback(isCorrect) {
+            const fb = document.getElementById('feedback');
+            const emoji = document.getElementById('feedback-emoji');
+            const text = document.getElementById('feedback-text');
+            fb.classList.remove('hidden');
+            if (isCorrect) {
+                emoji.innerText = '🤩🏆✨';
+                text.innerText = 'BOOM! YES!';
+                text.className = 'text-green-500 text-6xl font-black mb-8 italic';
+                createFirework(); createFirework();
+            } else {
+                emoji.innerText = '🧐';
+                text.innerText = 'TRY AGAIN!';
+                text.className = 'text-red-500 text-5xl font-black mb-8';
+            }
+        }
+
+        function nextStep() {
+            document.getElementById('feedback').classList.add('hidden');
+            if (currentStep < gameData.length - 1) {
+                currentStep++;
+            } else {
+                currentStep = 0; score = 0;
+                document.getElementById('score-val').innerText = score;
+            }
+            renderScreen();
+        }
+
+        function updateProgress() {
+            const percent = (currentStep / (gameData.length - 1)) * 100;
+            document.getElementById('progress').style.width = percent + '%';
+        }
+
+        window.onload = renderScreen;
+    </script>
+</body>
+</html>
