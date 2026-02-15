@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epic Animal Explorer - Unit 3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(135deg, #fef3c7 0%, #dcfce7 100%);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card {
+            background: white;
+            border-radius: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-option {
+            transition: all 0.2s;
+            border: 3px solid #f1f5f9;
+        }
+
+        .btn-option:hover {
+            border-color: #10b981;
+            background-color: #f0fdf4;
+        }
+
+        .correct {
+            background-color: #22c55e !important;
+            color: white !important;
+            border-color: #166534 !important;
+        }
+
+        .wrong {
+            background-color: #ef4444 !important;
+            color: white !important;
+            border-color: #991b1b !important;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #10b981;
+            transition: width 0.4s ease-out;
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <div id="game-container" class="max-w-xl w-full">
+        <div class="card p-8 md:p-10 relative">
+            <!-- Header -->
+            <div class="mb-6 text-center">
+                <h1 class="text-2xl font-bold text-green-700">Epic: Unit 3 Animals</h1>
+                <div class="flex justify-between items-center mt-4">
+                    <span id="topic-tag" class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Vocabulary</span>
+                    <span id="score-display" class="font-bold text-gray-600">Score: 0</span>
+                </div>
+                <div class="w-full h-3 bg-gray-100 rounded-full mt-3 overflow-hidden">
+                    <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Game Content -->
+            <div id="question-area">
+                <div id="visual-cue" class="text-7xl mb-6 text-center bg-gray-50 py-6 rounded-2xl">🦁</div>
+                <h2 id="question-text" class="text-xl font-bold text-gray-800 mb-6 text-center">
+                    Can you find the Lion?
+                </h2>
+                
+                <div id="options-grid" class="grid grid-cols-1 gap-3">
+                    <!-- Options injected here -->
+                </div>
+            </div>
+
+            <!-- Feedback Modal -->
+            <div id="feedback" class="hidden absolute inset-0 bg-white bg-opacity-95 flex flex-col items-center justify-center p-8 rounded-[2rem] text-center">
+                <div id="feedback-icon" class="text-6xl mb-4">✨</div>
+                <h3 id="feedback-title" class="text-2xl font-bold mb-2">Well Done!</h3>
+                <p id="feedback-fact" class="text-gray-600 mb-6"></p>
+                <button id="next-btn" class="bg-green-600 text-white px-10 py-3 rounded-full font-bold hover:bg-green-700 shadow-lg">
+                    Next Question →
+                </button>
+            </div>
+
+            <!-- Result Screen -->
+            <div id="end-screen" class="hidden text-center py-10">
+                <div class="text-7xl mb-4">🦁🦓🦍</div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Great Job!</h2>
+                <p class="text-gray-600 mb-6">You finished the Unit 3 animal adventure!</p>
+                <div class="text-4xl font-bold text-green-600 mb-8" id="final-score">Score: 0/10</div>
+                <button onclick="location.reload()" class="bg-blue-600 text-white px-8 py-3 rounded-full font-bold hover:bg-blue-700 shadow-lg">
+                    Play Again
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const gameData = [
+            {
+                type: "vocab",
+                icon: "🦁",
+                question: "Which animal is this?",
+                options: ["Gorilla", "Lion", "Zebra", "Kangaroo"],
+                answer: 1,
+                fact: "Lion starts with the letter L!"
+            },
+            {
+                type: "phonics",
+                icon: "🍋",
+                question: "Which animal starts with the same sound as Lemon?",
+                options: ["Zebra", "Gorilla", "Lion", "Kangaroo"],
+                answer: 2,
+                fact: "L is for Lemon and L is for Lion. /l/"
+            },
+            {
+                type: "grammar",
+                icon: "🦓",
+                question: "The Zebra has four ______.",
+                options: ["Hands", "Mouths", "Legs", "Tails"],
+                answer: 2,
+                fact: "Zebras use their 4 legs to run fast!"
+            },
+            {
+                type: "vocab",
+                icon: "🦘",
+                question: "Which animal is this?",
+                options: ["Lion", "Kangaroo", "Gorilla", "Zebra"],
+                answer: 1,
+                fact: "A Kangaroo has a pocket for its baby."
+            },
+            {
+                type: "location",
+                icon: "🏢🌳",
+                question: "Where do we see these animals?",
+                options: ["In the house", "In the zoo", "In the school", "In the car"],
+                answer: 1,
+                fact: "We can visit the Zoo to see lions and zebras."
+            },
+            {
+                type: "phonics",
+                icon: "🦵",
+                question: "What is the first letter of the word 'Legs'?",
+                options: ["B", "C", "L", "S"],
+                answer: 2,
+                fact: "L - Legs! The lion has four legs."
+            },
+            {
+                type: "vocab",
+                icon: "🦍",
+                question: "Is this a Zebra or a Gorilla?",
+                options: ["Zebra", "Gorilla"],
+                answer: 1,
+                fact: "Gorillas are very big and strong."
+            },
+            {
+                type: "grammar",
+                icon: "🦓",
+                question: "The zebra is white and ______.",
+                options: ["Blue", "Green", "Black", "Pink"],
+                answer: 2,
+                fact: "Zebras have black and white stripes."
+            },
+            {
+                type: "phonics",
+                icon: "📋",
+                question: "Which word starts with the /l/ sound?",
+                options: ["Sun", "List", "Bag", "Cat"],
+                answer: 1,
+                fact: "List, Lion, Lemon, and Legs all start with L."
+            },
+            {
+                type: "summary",
+                icon: "🎒",
+                question: "The lion is lost. He needs to ______ to the teacher.",
+                options: ["Sleep", "Listen", "Jump", "Eat"],
+                answer: 1,
+                fact: "Listen starts with the letter L!"
+            }
+        ];
+
+        let currentIdx = 0;
+        let score = 0;
+
+        function updateProgress() {
+            document.getElementById('progress-fill').style.width = `${(currentIdx / gameData.length) * 100}%`;
+            document.getElementById('score-display').innerText = `Score: ${score}`;
+        }
+
+        function loadQuestion() {
+            const data = gameData[currentIdx];
+            document.getElementById('topic-tag').innerText = data.type;
+            document.getElementById('visual-cue').innerText = data.icon;
+            document.getElementById('question-text').innerText = data.question;
+            
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = '';
+            
+            data.options.forEach((opt, i) => {
+                const btn = document.createElement('button');
+                btn.className = "btn-option w-full p-4 rounded-xl text-lg font-bold text-gray-700 shadow-sm bg-white";
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(i, btn);
+                grid.appendChild(btn);
+            });
+            updateProgress();
+        }
+
+        function checkAnswer(idx, btn) {
+            const data = gameData[currentIdx];
+            const feedback = document.getElementById('feedback');
+            const icon = document.getElementById('feedback-icon');
+            const title = document.getElementById('feedback-title');
+            const fact = document.getElementById('feedback-fact');
+
+            if (idx === data.answer) {
+                score++;
+                btn.classList.add('correct');
+                icon.innerText = "⭐";
+                title.innerText = "Excellent!";
+                title.className = "text-2xl font-bold text-green-600 mb-2";
+            } else {
+                btn.classList.add('wrong');
+                icon.innerText = "❌";
+                title.innerText = "Try Again!";
+                title.className = "text-2xl font-bold text-red-600 mb-2";
+            }
+
+            fact.innerText = data.fact;
+            feedback.classList.remove('hidden');
+        }
+
+        document.getElementById('next-btn').onclick = () => {
+            document.getElementById('feedback').classList.add('hidden');
+            currentIdx++;
+            if (currentIdx < gameData.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        };
+
+        function showResults() {
+            document.getElementById('question-area').classList.add('hidden');
+            document.getElementById('end-screen').classList.remove('hidden');
+            document.getElementById('final-score').innerText = `Score: ${score}/${gameData.length}`;
+            document.getElementById('progress-fill').style.width = '100%';
+        }
+
+        window.onload = loadQuestion;
+    </script>
+</body>
+</html>
