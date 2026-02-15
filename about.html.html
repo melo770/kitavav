@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goals 1: Adventure Island Quest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(to bottom, #87CEEB, #E0F7FA);
+            margin: 0;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+        .title-font { font-family: 'Fredoka One', cursive; }
+        
+        .point-light {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #4a5568;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+            transition: all 0.5s ease;
+        }
+        .point-light.active {
+            background: #fbbf24;
+            box-shadow: 0 0 15px #fbbf24, 0 0 30px #f59e0b;
+            transform: scale(1.2);
+        }
+
+        .card {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover { transform: translateY(-5px); }
+        .card:active { transform: scale(0.95); }
+
+        .hidden { display: none; }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .bounce { animation: bounce 1s infinite; }
+
+        .draggable {
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+        }
+        .draggable:active { cursor: grabbing; }
+        
+        .drop-zone.hover {
+            background-color: #d1fae5;
+            border-color: #10b981;
+            transform: scale(1.05);
+        }
+
+        .matched {
+            background-color: #10b981 !important;
+            color: white !important;
+            border-style: solid !important;
+        }
+
+        .alphabet-word {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <!-- Header / Scoreboard -->
+    <div class="p-4 bg-white/80 backdrop-blur shadow-md flex justify-between items-center">
+        <div class="flex flex-col">
+            <h1 class="title-font text-xl md:text-2xl text-blue-600">🏝️ Goals 1 Quest</h1>
+            <div class="text-xs font-bold text-gray-500 uppercase tracking-widest">Adventure Island</div>
+        </div>
+        <div id="lights-container" class="flex flex-wrap gap-1 max-w-[250px] md:max-w-none">
+            <!-- 20 Lights for an even longer game -->
+        </div>
+        <div class="text-lg md:text-xl font-bold text-orange-500">Level: <span id="level-num">1</span>/4</div>
+    </div>
+
+    <!-- Main Game Area -->
+    <main id="game-container" class="flex-1 flex flex-col items-center justify-center p-4 relative overflow-y-auto">
+        
+        <!-- Welcome Screen -->
+        <div id="screen-welcome" class="text-center">
+            <div class="text-8xl mb-4 bounce">🧭</div>
+            <h2 class="title-font text-5xl text-orange-500 mb-6">Adventure Awaits!</h2>
+            <p class="text-2xl text-blue-800 mb-8">Ready for 20 treasure questions?</p>
+            <button onclick="startGame()" class="bg-green-500 hover:bg-green-600 text-white title-font text-3xl py-4 px-12 rounded-full shadow-lg transition-all transform hover:scale-110">
+                START QUEST!
+            </button>
+        </div>
+
+        <!-- Level 1: Alphabet & Words -->
+        <div id="screen-level-1" class="hidden w-full max-w-5xl text-center">
+            <h2 class="title-font text-3xl text-purple-600 mb-4">Level 1: Letter Treasure</h2>
+            <p class="text-xl mb-6">Match the letter to the picture!</p>
+            <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3" id="alphabet-grid"></div>
+        </div>
+
+        <!-- Level 2: School Items Drag & Drop -->
+        <div id="screen-level-2" class="hidden w-full max-w-4xl text-center">
+            <h2 class="title-font text-3xl text-blue-600 mb-4">Level 2: Pack the Bag!</h2>
+            <p class="text-xl mb-8">Drag the words to the school items.</p>
+            
+            <div class="flex flex-col md:flex-row justify-around items-start gap-8">
+                <div id="swipe-targets" class="grid grid-cols-1 gap-4 w-full md:w-1/2"></div>
+                <div id="swipe-items" class="flex flex-wrap justify-center gap-4 w-full md:w-1/2"></div>
+            </div>
+        </div>
+
+        <!-- Level 3: Action Hero (Commands) -->
+        <div id="screen-level-3" class="hidden w-full max-w-4xl text-center">
+            <h2 class="title-font text-3xl text-red-600 mb-4">Level 3: Simon Says!</h2>
+            <div id="action-question" class="bg-white/50 p-8 rounded-3xl mb-8 border-4 border-white shadow-xl">
+                <div id="action-img" class="text-9xl mb-4">🏃‍♂️</div>
+                <div class="text-3xl font-bold text-gray-700" id="action-text">Loading...</div>
+            </div>
+            <div class="grid grid-cols-2 gap-4" id="action-btns"></div>
+        </div>
+
+        <!-- Level 4: Number & Color Pop -->
+        <div id="screen-level-4" class="hidden w-full max-w-4xl text-center">
+            <h2 class="title-font text-3xl text-green-600 mb-4">Level 4: Magic Bubbles</h2>
+            <p class="text-xl mb-6" id="number-task">Pop the numbers in order: 1 to 10!</p>
+            <div class="flex flex-wrap justify-center gap-4" id="bubble-container"></div>
+        </div>
+
+        <!-- Feedback Overlay -->
+        <div id="feedback" class="hidden absolute inset-0 flex items-center justify-center bg-white/60 z-50">
+            <div class="bg-white p-8 rounded-3xl shadow-2xl text-center border-8 border-yellow-400">
+                <div id="feedback-icon" class="text-8xl mb-4">🌟</div>
+                <div id="feedback-msg" class="title-font text-4xl text-orange-500">GREAT!</div>
+            </div>
+        </div>
+
+        <!-- Win Screen -->
+        <div id="screen-win" class="hidden text-center">
+            <h2 class="title-font text-6xl text-yellow-500 mb-6">ISLAND MASTER! 🏆</h2>
+            <p class="text-2xl text-blue-800 mb-8">You finished the Quest!</p>
+            <div class="flex justify-center gap-4 text-7xl mb-10">🥇💎🏝️📦</div>
+            <button onclick="location.reload()" class="bg-blue-500 hover:bg-blue-600 text-white title-font text-3xl py-4 px-12 rounded-full shadow-lg">
+                PLAY AGAIN
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        let score = 0;
+        const totalPoints = 20;
+        let currentLevel = 1;
+
+        // Scoreboard initialization
+        const lightsContainer = document.getElementById('lights-container');
+        for (let i = 0; i < totalPoints; i++) {
+            const light = document.createElement('div');
+            light.className = 'point-light';
+            light.id = `light-${i}`;
+            lightsContainer.appendChild(light);
+        }
+
+        function updateLights() {
+            for (let i = 0; i < totalPoints; i++) {
+                const light = document.getElementById(`light-${i}`);
+                if (i < score) light.classList.add('active');
+            }
+        }
+
+        function showFeedback(msg, icon, duration = 800) {
+            const fb = document.getElementById('feedback');
+            document.getElementById('feedback-msg').innerText = msg;
+            document.getElementById('feedback-icon').innerText = icon;
+            fb.classList.remove('hidden');
+            setTimeout(() => fb.classList.add('hidden'), duration);
+        }
+
+        function startGame() {
+            document.getElementById('screen-welcome').classList.add('hidden');
+            loadLevel1();
+        }
+
+        // --- LEVEL 1: EXTENDED ALPHABET (6 Pairs = 6 Points) ---
+        function loadLevel1() {
+            document.getElementById('screen-level-1').classList.remove('hidden');
+            const grid = document.getElementById('alphabet-grid');
+            let selected = null;
+            let level1Matches = 0;
+            
+            const data = [
+                { char: 'A', word: 'Apple', img: '🍎' },
+                { char: 'B', word: 'Bag', img: '🎒' },
+                { char: 'M', word: 'Monkey', img: '🐒' },
+                { char: 'T', word: 'Teddy', img: '🧸' },
+                { char: 'S', word: 'Snake', img: '🐍' },
+                { char: 'D', word: 'Dog', img: '🐶' }
+            ];
+
+            const items = [];
+            data.forEach(d => {
+                items.push({ val: d.char, type: 'letter', pair: d.word });
+                items.push({ val: d.word, type: 'word', pair: d.char, icon: d.img });
+            });
+            items.sort(() => Math.random() - 0.5);
+
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "card bg-white p-4 rounded-2xl shadow-md border-4 border-purple-200 flex flex-col items-center justify-center";
+                div.innerHTML = `
+                    <div class="text-3xl font-bold">${item.type === 'word' ? item.icon : item.val}</div>
+                    <div class="alphabet-word font-bold">${item.type === 'word' ? item.val : 'Letter'}</div>
+                `;
+                
+                div.onclick = () => {
+                    if (div.classList.contains('bg-green-400')) return;
+                    if (!selected) {
+                        selected = { div, item };
+                        div.classList.add('border-blue-500', 'bg-blue-50');
+                    } else {
+                        if (selected.item.pair === item.val && selected.item.type !== item.type) {
+                            div.className = "card bg-green-400 text-white p-4 rounded-2xl shadow-md border-4 border-green-600 flex flex-col items-center justify-center scale-105 transition-transform";
+                            div.innerHTML = `<div class="text-4xl">⭐</div>`;
+                            selected.div.className = div.className;
+                            selected.div.innerHTML = div.innerHTML;
+                            score++;
+                            level1Matches++;
+                            updateLights();
+                            showFeedback("Match!", "✨");
+                            if (level1Matches >= 6) setTimeout(() => nextLevel(2), 1000);
+                        } else {
+                            selected.div.classList.remove('border-blue-500', 'bg-blue-50');
+                        }
+                        selected = null;
+                    }
+                };
+                grid.appendChild(div);
+            });
+        }
+
+        // --- LEVEL 2: PACK THE BAG (5 Items = 5 Points) ---
+        function loadLevel2() {
+            document.getElementById('screen-level-2').classList.remove('hidden');
+            const data = [
+                { id: 'BOOK', img: '📘' },
+                { id: 'PENCIL', img: '✏️' },
+                { id: 'ERASER', img: '🧼' },
+                { id: 'CHAIR', img: '🪑' },
+                { id: 'DESK', img: '📦' }
+            ];
+            
+            let level2Matches = 0;
+            const targetCont = document.getElementById('swipe-targets');
+            const itemCont = document.getElementById('swipe-items');
+
+            data.forEach(d => {
+                const zone = document.createElement('div');
+                zone.className = "drop-zone flex items-center justify-between p-3 bg-white rounded-2xl border-4 border-dashed border-blue-200 transition-all";
+                zone.innerHTML = `<span class="text-4xl">${d.img}</span><div class="w-24 md:w-32 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xs text-gray-400 font-bold border-2 border-gray-200" data-match="${d.id}">DRAG HERE</div>`;
+                
+                zone.addEventListener('dragover', e => e.preventDefault());
+                zone.addEventListener('drop', e => {
+                    const id = e.dataTransfer.getData('text');
+                    if(id === d.id) handleMatch(id, zone);
+                });
+                targetCont.appendChild(zone);
+
+                const word = document.createElement('div');
+                word.className = "draggable p-3 bg-green-500 text-white rounded-xl font-bold text-sm shadow-md";
+                word.innerText = d.id;
+                word.draggable = true;
+                word.id = `drag-${d.id}`;
+                word.addEventListener('dragstart', e => e.dataTransfer.setData('text', d.id));
+                word.addEventListener('click', () => {
+                    const choice = prompt(`Match "${d.id}" to: BOOK, PENCIL, ERASER, CHAIR, DESK`)?.toUpperCase();
+                    if(choice === d.id) handleMatch(d.id, zone);
+                });
+                itemCont.appendChild(word);
+            });
+
+            function handleMatch(id, zone) {
+                const wordEl = document.getElementById(`drag-${id}`);
+                if (!wordEl || wordEl.style.opacity === "0.5") return;
+                wordEl.style.opacity = "0.5";
+                wordEl.classList.replace('bg-green-500', 'bg-gray-300');
+                const slot = zone.querySelector(`[data-match="${id}"]`);
+                slot.innerText = id;
+                slot.className = "w-24 md:w-32 h-10 rounded-lg bg-green-500 text-white flex items-center justify-center font-bold text-xs";
+                zone.classList.add('matched');
+                score++;
+                level2Matches++;
+                updateLights();
+                showFeedback("Correct!", "🎒");
+                if (level2Matches >= 5) setTimeout(() => nextLevel(3), 1000);
+            }
+        }
+
+        // --- LEVEL 3: ACTIONS (4 Questions = 4 Points) ---
+        let actionStep = 0;
+        const actionData = [
+            { text: "Sit down", icon: "🪑", correct: "Sit down", options: ["Sit down", "Stand up"] },
+            { text: "Open your book", icon: "📖", correct: "Open", options: ["Close", "Open"] },
+            { text: "Point to the door", icon: "🚪", correct: "Point", options: ["Point", "Look"] },
+            { text: "Listen", icon: "👂", correct: "Listen", options: ["Listen", "Point"] }
+        ];
+
+        function loadLevel3() {
+            document.getElementById('screen-level-3').classList.remove('hidden');
+            renderAction();
+        }
+
+        function renderAction() {
+            const step = actionData[actionStep];
+            document.getElementById('action-img').innerText = step.icon;
+            document.getElementById('action-text').innerText = `Which one is "${step.text}"?`;
+            const container = document.getElementById('action-btns');
+            container.innerHTML = '';
+            step.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "bg-white border-4 border-red-200 p-5 rounded-2xl text-xl font-bold hover:bg-red-50 shadow-md active:scale-95 transition-transform";
+                btn.innerText = opt;
+                btn.onclick = () => {
+                    if (opt === step.correct) {
+                        score++;
+                        updateLights();
+                        showFeedback("YES!", "⭐");
+                        actionStep++;
+                        if (actionStep < actionData.length) renderAction();
+                        else setTimeout(() => nextLevel(4), 1000);
+                    } else {
+                        showFeedback("Try again!", "❌");
+                    }
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        // --- LEVEL 4: NUMBERS 1-10 (5 Groups = 5 Points) ---
+        function loadLevel4() {
+            document.getElementById('screen-level-4').classList.remove('hidden');
+            let nextNum = 1;
+            const container = document.getElementById('bubble-container');
+            const nums = Array.from({length: 10}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+            
+            nums.forEach(n => {
+                const b = document.createElement('div');
+                b.className = "w-16 h-16 md:w-20 md:h-20 bg-blue-400 rounded-full flex items-center justify-center text-2xl text-white font-bold cursor-pointer shadow-xl transition-all hover:scale-110 active:bg-blue-600";
+                b.innerText = n;
+                b.onclick = () => {
+                    if (n === nextNum) {
+                        b.style.transform = "scale(0)";
+                        b.style.opacity = "0";
+                        // Reward points at every 2nd bubble to total 5 points for this level
+                        if (nextNum % 2 === 0) {
+                            score++;
+                            updateLights();
+                            showFeedback("Keep going!", "🎈");
+                        }
+                        nextNum++;
+                        if (nextNum > 10) setTimeout(winGame, 1000);
+                    } else {
+                        showFeedback("Find " + nextNum, "🔢");
+                    }
+                };
+                container.appendChild(b);
+            });
+        }
+
+        function nextLevel(num) {
+            const screens = ['welcome', 'level-1', 'level-2', 'level-3', 'level-4'];
+            screens.forEach(s => document.getElementById(`screen-${s}`).classList.add('hidden'));
+            currentLevel = num;
+            document.getElementById('level-num').innerText = num;
+            if (num === 2) loadLevel2();
+            if (num === 3) loadLevel3();
+            if (num === 4) loadLevel4();
+        }
+
+        function winGame() {
+            document.getElementById('screen-level-4').classList.add('hidden');
+            document.getElementById('screen-win').classList.remove('hidden');
+            setInterval(() => {
+                const lights = document.querySelectorAll('.point-light');
+                lights.forEach(l => {
+                    const colors = ['#fbbf24', '#ef4444', '#3b82f6', '#10b981', '#a855f7'];
+                    l.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                });
+            }, 150);
+        }
+    </script>
+</body>
+</html>
