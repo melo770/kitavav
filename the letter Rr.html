@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Link - TikTok Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --tt-red: #FE2C55;
+            --tt-cyan: #25F4EE;
+            --ig-gradient: linear-gradient(45deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            color: white;
+        }
+
+        /* Vertical Scroll Container (TikTok Style) */
+        .tt-container {
+            height: 100vh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scrollbar-width: none;
+        }
+        .tt-container::-webkit-scrollbar { display: none; }
+
+        .tt-slide {
+            height: 100vh;
+            width: 100%;
+            scroll-snap-align: start;
+            position: relative;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Instagram Story Ring */
+        .story-ring {
+            width: 70px;
+            height: 70px;
+            padding: 3px;
+            background: var(--ig-gradient);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .story-inner {
+            background: black;
+            padding: 2px;
+            border-radius: 50%;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+        }
+
+        /* Sidebar Actions (TikTok Style) */
+        .sidebar-actions {
+            position: absolute;
+            right: 15px;
+            bottom: 120px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 50;
+        }
+
+        .action-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .action-icon {
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            transition: transform 0.1s;
+        }
+        .action-label { font-size: 12px; font-weight: 600; }
+
+        /* Bottom Nav (iPhone Style) */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 85px;
+            background: rgba(0,0,0,0.9);
+            backdrop-blur: 10px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: 20px;
+            border-top: 0.5px solid rgba(255,255,255,0.1);
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            opacity: 0.5;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+        .nav-item.active { opacity: 1; }
+        .nav-item span { font-size: 10px; font-weight: 700; text-transform: uppercase; }
+
+        /* Content Overlay */
+        .content-overlay {
+            position: absolute;
+            bottom: 120px;
+            left: 15px;
+            right: 80px;
+            z-index: 40;
+        }
+
+        .tab-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 13px;
+            transition: 0.2s;
+            color: white;
+            background: rgba(255,255,255,0.1);
+        }
+        .tab-btn.active { background: white; color: black; }
+
+        .game-card {
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 24px;
+            padding: 24px;
+            width: 100%;
+            max-width: 340px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+
+        .like-active { color: #FE2C55; transform: scale(1.2); }
+        
+        /* Floating Text Style */
+        .vocab-word-large {
+            font-size: 5rem;
+            font-weight: 900;
+            letter-spacing: -2px;
+            margin-top: -20px;
+            text-transform: lowercase;
+            text-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* Match Game Styles */
+        .match-tile {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 12px;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .match-tile.selected {
+            background: rgba(255,255,255,0.2);
+            border-color: #25F4EE;
+            transform: scale(1.05);
+        }
+        .match-tile.matched {
+            background: #FE2C55;
+            color: white;
+            border-color: #FE2C55;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Story Bar -->
+    <div id="story-bar" class="fixed top-0 left-0 right-0 h-32 flex items-center gap-4 px-4 overflow-x-auto no-scrollbar z-50 bg-gradient-to-b from-black/80 to-transparent">
+        <div class="flex flex-col items-center gap-1">
+            <div class="story-ring"><div class="story-inner">➕</div></div>
+            <span class="text-[10px] font-bold">Your Story</span>
+        </div>
+        <!-- Materials dynamically added here -->
+    </div>
+
+    <!-- TikTok Feed -->
+    <div id="section-feed" class="tt-container"></div>
+
+    <!-- Reading Room -->
+    <div id="section-reading" class="tt-container hidden pt-36">
+        <div class="px-4 flex flex-col items-center gap-6">
+            <div class="flex gap-2 p-1 bg-white/10 rounded-xl w-full max-w-xs">
+                <button class="tab-btn flex-1 active" onclick="switchReadingTab('phrases')">Phrases</button>
+                <button class="tab-btn flex-1" onclick="switchReadingTab('sentences')">Sentences</button>
+            </div>
+            <div id="reading-list" class="w-full flex flex-col gap-3 pb-32"></div>
+        </div>
+    </div>
+
+    <!-- Games View -->
+    <div id="section-games" class="tt-container hidden pt-36">
+        <div class="px-4 flex flex-col items-center gap-6 pb-32">
+            
+            <!-- NEW: Match Game -->
+            <div class="game-card">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-6 h-6 rounded-full bg-pink-500"></div>
+                    <span class="font-bold text-xs uppercase tracking-widest text-slate-400">Match Up</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4" id="match-grid">
+                    <div id="match-col-left" class="flex flex-col gap-2"></div>
+                    <div id="match-col-right" class="flex flex-col gap-2"></div>
+                </div>
+            </div>
+
+            <div class="game-card">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-6 h-6 rounded-full bg-cyan-400"></div>
+                    <span class="font-bold text-xs uppercase tracking-widest text-slate-400">Word Lab</span>
+                </div>
+                <div id="builder-emoji" class="text-7xl mb-6 text-center">🏃</div>
+                <div id="builder-slots" class="flex justify-center gap-2 mb-8 h-12"></div>
+                <div id="builder-options" class="flex flex-wrap justify-center gap-2"></div>
+            </div>
+
+            <div class="game-card bg-sky-900 border-none relative overflow-hidden">
+                <div class="relative z-10">
+                    <span class="text-[10px] font-black uppercase text-sky-300">Trending Challenge</span>
+                    <h3 class="text-xl font-black mt-1">Find: <span id="cloud-target" class="text-white underline">rat</span></h3>
+                </div>
+                <div id="cloud-arena" class="h-64 mt-4 bg-black/20 rounded-xl relative overflow-hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="showSection('feed')">
+            <div class="text-2xl">🏠</div>
+            <span>Home</span>
+        </div>
+        <div class="nav-item" onclick="showSection('reading')">
+            <div class="text-2xl">📖</div>
+            <span>Discover</span>
+        </div>
+        <div class="nav-item">
+             <div class="w-10 h-7 bg-white rounded-lg flex items-center justify-center text-black font-bold">+</div>
+        </div>
+        <div class="nav-item" onclick="showSection('games')">
+            <div class="text-2xl">🎮</div>
+            <span>Play</span>
+        </div>
+        <div class="nav-item">
+            <div class="text-2xl">👤</div>
+            <span>Profile</span>
+        </div>
+    </nav>
+
+    <script>
+        const materials = [
+            { w: 'rat', emoji: '🐀' }, { w: 'run', emoji: '🏃' }, { w: 'rob', emoji: '💰' },
+            { w: 'ribs', emoji: '🍖' }, { w: 'rocks', emoji: '🪨' }, { w: 'rest', emoji: '💤' },
+            { w: 'red', emoji: '🔴' },
+            { w: 'are', emoji: '👥', isSight: true }, { w: 'her', emoji: '👩', isSight: true },
+            { w: 'there', emoji: '👉', isSight: true }, { w: 'their', emoji: '🏠', isSight: true }
+        ];
+
+        const readingData = {
+            phrases: ["her rat", "there are rocks", "their ribs", "rest there", "her red ribs", "their red rat", "rocks are there", "her red rocks"],
+            sentences: [
+                "The rat is there.", "Her ribs are red.", "Are the rocks there?", 
+                "The red rat can run.", "Can the rat rest there?", "Their rat can run.", 
+                "The rocks are red.", "Their red ribs are there."
+            ]
+        };
+
+        let currentReadingTab = 'phrases';
+
+        function initApp() {
+            initStories();
+            initFeed();
+            initReading();
+        }
+
+        function initStories() {
+            const bar = document.getElementById('story-bar');
+            materials.forEach(item => {
+                const story = document.createElement('div');
+                story.className = 'flex flex-col items-center gap-1 flex-shrink-0 cursor-pointer';
+                story.onclick = () => speak(item.w);
+                story.innerHTML = `
+                    <div class="story-ring"><div class="story-inner">${item.emoji}</div></div>
+                    <span class="text-[10px] font-bold">${item.w}</span>
+                `;
+                bar.appendChild(story);
+            });
+        }
+
+        function initFeed() {
+            const container = document.getElementById('section-feed');
+            container.innerHTML = '';
+            materials.forEach(item => {
+                const slide = document.createElement('div');
+                slide.className = 'tt-slide';
+                slide.innerHTML = `
+                    <div class="text-[10rem] drop-shadow-[0_0_30px_rgba(255,255,255,0.2)] active:scale-95 transition-transform" onclick="speak('${item.w}')">${item.emoji}</div>
+                    <div class="vocab-word-large" onclick="speak('${item.w}')">${item.w}</div>
+                    
+                    <div class="sidebar-actions">
+                        <div class="action-item" onclick="toggleLike(this)">
+                            <div class="action-icon">❤️</div>
+                            <span class="action-label">${Math.floor(Math.random()*900)+100}k</span>
+                        </div>
+                        <div class="action-item">
+                            <div class="action-icon">💬</div>
+                            <span class="action-label">${Math.floor(Math.random()*50)+5}</span>
+                        </div>
+                        <div class="action-item">
+                            <div class="action-icon">🔖</div>
+                            <span class="action-label">Save</span>
+                        </div>
+                        <div class="action-item">
+                            <div class="action-icon">⤴️</div>
+                            <span class="action-label">Share</span>
+                        </div>
+                    </div>
+
+                    <div class="content-overlay">
+                        <h3 class="font-black text-xl mb-1">@English_Link</h3>
+                        <p class="text-sm font-medium">Learn the word <span class="text-[#FE2C55]">#${item.w}</span> today! ${item.isSight ? '✨ Sight Word Special' : ''}</p>
+                        <div class="flex items-center gap-2 mt-3">
+                            <span class="animate-pulse">🎵</span>
+                            <marquee class="text-xs font-bold w-32">English Link Original Audio - Melonee Phonics</marquee>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(slide);
+            });
+        }
+
+        function initReading() {
+            const list = document.getElementById('reading-list');
+            list.innerHTML = '';
+            readingData[currentReadingTab].forEach((text, i) => {
+                const item = document.createElement('div');
+                item.className = 'flex flex-col gap-2 p-4 bg-white/5 rounded-2xl border border-white/5 active:bg-white/10 transition';
+                item.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Snippet ${i+1}</span>
+                        <div class="flex gap-3 text-sm opacity-40"><span>❤️</span><span>💬</span></div>
+                    </div>
+                    <p class="text-lg font-bold text-white">${text}</p>
+                `;
+                item.onclick = () => speak(text);
+                list.appendChild(item);
+            });
+        }
+
+        function toggleLike(el) {
+            el.querySelector('.action-icon').classList.toggle('like-active');
+            if(el.querySelector('.action-icon').classList.contains('like-active')) {
+                confetti({ particleCount: 20, spread: 30, origin: { y: 0.8 } });
+            }
+        }
+
+        function showSection(id) {
+            document.querySelectorAll('.tt-container').forEach(c => c.classList.add('hidden'));
+            document.getElementById(`section-${id}`).classList.remove('hidden');
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            if(event) event.currentTarget.classList.add('active');
+            
+            if (id === 'games') initGames();
+            if (id === 'reading') initReading();
+        }
+
+        function switchReadingTab(tab) {
+            currentReadingTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.toggle('active', b.innerText.toLowerCase().includes(tab));
+            });
+            initReading();
+        }
+
+        // --- GAME LOGIC ---
+        
+        // Match Game State
+        let selectedMatchWord = null;
+        let selectedMatchEmoji = null;
+
+        function setupMatch() {
+            const left = document.getElementById('match-col-left');
+            const right = document.getElementById('match-col-right');
+            left.innerHTML = ''; right.innerHTML = '';
+            selectedMatchWord = null;
+            selectedMatchEmoji = null;
+
+            const pool = [...materials].sort(() => Math.random() - 0.5).slice(0, 4);
+            const shuffledWords = [...pool].sort(() => Math.random() - 0.5);
+            const shuffledEmojis = [...pool].sort(() => Math.random() - 0.5);
+
+            shuffledEmojis.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'match-tile text-2xl';
+                el.innerText = item.emoji;
+                el.onclick = () => {
+                    document.querySelectorAll('#match-col-left .match-tile').forEach(t => t.classList.remove('selected'));
+                    el.classList.add('selected');
+                    selectedMatchEmoji = item.w;
+                    checkMatch(el, 'emoji');
+                };
+                left.appendChild(el);
+            });
+
+            shuffledWords.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'match-tile text-sm font-bold uppercase';
+                el.innerText = item.w;
+                el.onclick = () => {
+                    document.querySelectorAll('#match-col-right .match-tile').forEach(t => t.classList.remove('selected'));
+                    el.classList.add('selected');
+                    selectedMatchWord = item.w;
+                    checkMatch(el, 'word');
+                };
+                right.appendChild(el);
+            });
+        }
+
+        function checkMatch(currentEl, type) {
+            if (selectedMatchWord && selectedMatchEmoji) {
+                if (selectedMatchWord === selectedMatchEmoji) {
+                    speak(selectedMatchWord);
+                    document.querySelectorAll('.match-tile.selected').forEach(t => {
+                        t.classList.remove('selected');
+                        t.classList.add('matched');
+                    });
+                    selectedMatchWord = null;
+                    selectedMatchEmoji = null;
+                    
+                    if (document.querySelectorAll('.match-tile:not(.matched)').length === 0) {
+                        confetti({ particleCount: 150, spread: 70 });
+                        setTimeout(setupMatch, 2000);
+                    }
+                } else {
+                    setTimeout(() => {
+                        document.querySelectorAll('.match-tile.selected').forEach(t => t.classList.remove('selected'));
+                        selectedMatchWord = null;
+                        selectedMatchEmoji = null;
+                    }, 400);
+                }
+            }
+        }
+
+        let builderWord = "";
+        function setupBuilder() {
+            const filtered = materials.filter(m => !m.isSight);
+            const item = filtered[Math.floor(Math.random() * filtered.length)];
+            builderWord = item.w;
+            document.getElementById('builder-emoji').innerText = item.emoji;
+            const slots = document.getElementById('builder-slots');
+            const opts = document.getElementById('builder-options');
+            slots.innerHTML = ''; opts.innerHTML = '';
+
+            item.w.split('').forEach(() => {
+                const s = document.createElement('div');
+                s.className = 'w-10 h-12 border-b-4 border-white/20 text-3xl font-black flex justify-center items-center uppercase';
+                slots.appendChild(s);
+            });
+
+            const pool = (item.w + "abcz").split('').sort(() => Math.random() - 0.5);
+            pool.forEach(char => {
+                const tile = document.createElement('div');
+                tile.className = 'bg-white/10 p-3 rounded-lg font-black text-xl min-w-[40px] text-center active:scale-90 transition';
+                tile.innerText = char;
+                tile.onclick = () => {
+                    const nextSlot = Array.from(slots.children).find(s => !s.innerText);
+                    const expected = builderWord[Array.from(slots.children).indexOf(nextSlot)];
+                    if (char === expected) {
+                        nextSlot.innerText = char;
+                        tile.style.opacity = '0.2';
+                        tile.style.pointerEvents = 'none';
+                        if (Array.from(slots.children).every(s => s.innerText)) {
+                            confetti({ particleCount: 100, spread: 70 });
+                            setTimeout(setupBuilder, 1500);
+                        }
+                    }
+                };
+                opts.appendChild(tile);
+            });
+        }
+
+        function setupCloud() {
+            const arena = document.getElementById('cloud-arena');
+            arena.innerHTML = '';
+            const item = materials[Math.floor(Math.random() * materials.length)];
+            const target = item.w;
+            document.getElementById('cloud-target').innerText = target;
+
+            const spawn = () => {
+                if (document.getElementById('section-games').classList.contains('hidden')) return;
+                const word = materials[Math.floor(Math.random() * materials.length)].w;
+                const cloud = document.createElement('div');
+                cloud.className = 'absolute bg-white text-black px-4 py-2 rounded-full font-black text-sm cursor-pointer shadow-lg whitespace-nowrap';
+                cloud.innerText = word;
+                cloud.style.top = Math.random() * 80 + '%';
+                cloud.style.left = '-100px';
+                
+                let pos = -100;
+                const speed = 1 + Math.random() * 2;
+                const move = setInterval(() => {
+                    pos += speed;
+                    cloud.style.left = pos + 'px';
+                    if (pos > 400) { clearInterval(move); cloud.remove(); }
+                }, 20);
+
+                cloud.onclick = () => {
+                    if (word === target) {
+                        confetti({ origin: { y: 0.5 } });
+                        clearInterval(move);
+                        cloud.remove();
+                        setupCloud();
+                    }
+                };
+                arena.appendChild(cloud);
+            };
+            
+            const gameInterval = setInterval(spawn, 1500);
+            const checkVisible = setInterval(() => {
+                if(document.getElementById('section-games').classList.contains('hidden')) {
+                    clearInterval(gameInterval);
+                    clearInterval(checkVisible);
+                }
+            }, 500);
+        }
+
+        function speak(text) {
+            const u = new SpeechSynthesisUtterance(text);
+            u.rate = 0.9;
+            speechSynthesis.speak(u);
+        }
+
+        function initGames() {
+            setupMatch();
+            setupBuilder();
+            setupCloud();
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
